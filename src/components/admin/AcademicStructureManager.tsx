@@ -691,22 +691,22 @@ export function AcademicStructureManager() {
                         style={{ background: s.color ?? "var(--primary)" }}
                       />
                     )}
-                    <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+                    <div className="flex items-start gap-2">
                       <ChevronRight
-                        className={`h-3.5 w-3.5 shrink-0 transition-transform duration-300 ${isActive ? "rotate-90 text-primary" : "text-muted-foreground"}`}
+                        className={`mt-0.5 h-3.5 w-3.5 shrink-0 transition-transform duration-300 ${isActive ? "rotate-90 text-primary" : "text-muted-foreground"}`}
                       />
                       <span
-                        className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-background"
+                        className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-background"
                         style={{ background: s.color ?? "#a855f7" }}
                       />
-                      <span className="min-w-0 flex-1 truncate text-sm font-semibold">{s.name}</span>
+                      <span className="min-w-0 flex-1 break-words text-sm font-semibold leading-snug">{s.name}</span>
                       <Badge
                         variant={s.status === "published" ? "default" : "secondary"}
-                        className="text-[10px] capitalize"
+                        className="shrink-0 text-[10px] capitalize"
                       >
                         {s.status}
                       </Badge>
-                      <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="hidden items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 sm:flex">
                         <IconBtn
                           title="Edit subject"
                           onClick={(e) => {
@@ -727,7 +727,8 @@ export function AcademicStructureManager() {
                         </IconBtn>
                       </div>
                     </div>
-                    <div className="mt-2 flex items-center gap-1.5 pl-6">
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-6">
+
                       <CountChip
                         icon={<Layers className="h-3 w-3" />}
                         value={st.chapters}
@@ -2032,7 +2033,8 @@ function ChapterMcqsDialog({ chapter, onClose }: { chapter: Chapter; onClose: ()
               No MCQs in this chapter yet.
             </div>
           ) : (
-            <table className="w-full text-xs">
+            <table className="w-full min-w-[640px] text-xs">
+
               <thead className="sticky top-0 bg-muted/60 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2">Question</th>

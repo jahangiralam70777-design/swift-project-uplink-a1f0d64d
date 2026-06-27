@@ -422,10 +422,11 @@ export function MockTestManagerFlow() {
               <ChevronRight className="h-3 w-3" />
               <span className="text-foreground">Mock Test Manager</span>
             </div>
-            <h1 className="font-display text-3xl font-bold leading-tight tracking-tight md:text-[42px]">
+            <h1 className="font-display text-2xl font-bold leading-tight tracking-tight sm:text-3xl md:text-[42px]">
               Mock Test <br className="hidden md:block" />
               <span className="text-gradient">Management Center</span>
             </h1>
+
             <p className="max-w-xl text-sm text-muted-foreground">
               Create, manage, track and analyze mock tests with powerful automation.
             </p>
