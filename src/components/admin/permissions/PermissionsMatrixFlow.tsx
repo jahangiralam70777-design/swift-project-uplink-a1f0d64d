@@ -160,7 +160,7 @@ function PermissionsGrid({ data }: { data: any }) {
       </div>
 
       <div className="overflow-auto rounded-2xl border border-white/10">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="sticky left-0 z-10 bg-muted/60 px-4 py-3 text-left font-medium">
@@ -181,7 +181,7 @@ function PermissionsGrid({ data }: { data: any }) {
           <tbody>
             {visible.map((perm: any, idx: number) => (
               <tr key={perm.key} className={idx % 2 === 0 ? "bg-background/0" : "bg-muted/10"}>
-                <td className="sticky left-0 z-10 bg-background/95 px-4 py-2.5">
+                <td className="sticky left-0 z-10 whitespace-nowrap bg-background/95 px-4 py-2.5">
                   <div className="font-medium">{perm.label}</div>
                   <div className="text-[11px] text-muted-foreground">{perm.key}</div>
                 </td>
@@ -274,7 +274,7 @@ function PagesGrid({ data }: { data: any }) {
       </div>
 
       <div className="overflow-auto rounded-2xl border border-white/10">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="sticky left-0 z-10 bg-muted/60 px-4 py-3 text-left font-medium">Page</th>
@@ -303,7 +303,7 @@ function PagesGrid({ data }: { data: any }) {
                 </tr>
                 {rows.map((page: any) => (
                   <tr key={page.key}>
-                    <td className="sticky left-0 z-10 bg-background/95 px-4 py-2.5">
+                    <td className="sticky left-0 z-10 whitespace-nowrap bg-background/95 px-4 py-2.5">
                       <div className="font-medium">{page.label}</div>
                       <div className="text-[11px] text-muted-foreground">{page.route}</div>
                     </td>
@@ -352,7 +352,7 @@ function AuditLogTable() {
         </Badge>
       </div>
       <div className="overflow-auto rounded-2xl border border-white/10">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="px-3 py-2 text-left font-medium">When</th>

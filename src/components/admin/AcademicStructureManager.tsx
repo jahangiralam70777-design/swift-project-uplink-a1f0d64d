@@ -691,7 +691,7 @@ export function AcademicStructureManager() {
                         style={{ background: s.color ?? "var(--primary)" }}
                       />
                     )}
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
                       <ChevronRight
                         className={`h-3.5 w-3.5 shrink-0 transition-transform duration-300 ${isActive ? "rotate-90 text-primary" : "text-muted-foreground"}`}
                       />
@@ -699,7 +699,7 @@ export function AcademicStructureManager() {
                         className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-background"
                         style={{ background: s.color ?? "#a855f7" }}
                       />
-                      <span className="flex-1 truncate text-sm font-semibold">{s.name}</span>
+                      <span className="min-w-0 flex-1 truncate text-sm font-semibold">{s.name}</span>
                       <Badge
                         variant={s.status === "published" ? "default" : "secondary"}
                         className="text-[10px] capitalize"
@@ -786,7 +786,7 @@ export function AcademicStructureManager() {
               {subjectChapters.map((c) => (
                 <li
                   key={c.id}
-                  className="group flex items-center gap-2 rounded-xl border border-transparent px-3 py-2 text-sm transition-all duration-200 hover:-translate-y-px hover:border-border/60 hover:bg-muted/40 hover:shadow-card-soft"
+                  className="group flex flex-wrap items-center gap-2 rounded-xl border border-transparent px-3 py-2 text-sm transition-all duration-200 hover:-translate-y-px hover:border-border/60 hover:bg-muted/40 hover:shadow-card-soft sm:flex-nowrap"
                 >
                   <span
                     className="h-2 w-2 shrink-0 rounded-full"
@@ -806,7 +806,7 @@ export function AcademicStructureManager() {
                   <button
                     type="button"
                     onClick={() => setMcqChapter(c)}
-                    className="flex-1 truncate text-left hover:text-primary"
+                    className="min-w-0 flex-1 truncate text-left hover:text-primary"
                     title="View & manage MCQs"
                   >
                     <p className="truncate font-medium">{c.name}</p>
@@ -1401,7 +1401,7 @@ function PopularSubjectsCard({
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/15 font-mono text-[10px] font-bold text-primary">
                 {i + 1}
               </span>
-              <span className="flex-1 truncate font-medium">{s.name}</span>
+              <span className="min-w-0 flex-1 truncate font-medium">{s.name}</span>
               <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                 {s.pct.toFixed(1)}%
               </span>
@@ -1446,7 +1446,7 @@ function TopChaptersCard({
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/15 font-mono text-[10px] font-bold text-primary">
                 {i + 1}
               </span>
-              <span className="flex-1 truncate font-medium">{c.name}</span>
+              <span className="min-w-0 flex-1 truncate font-medium">{c.name}</span>
               <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                 {((c.score / max) * 100).toFixed(0)}%
               </span>

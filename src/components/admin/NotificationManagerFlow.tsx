@@ -309,7 +309,7 @@ export function NotificationManagerFlow() {
               No notifications yet. Click "Create Notification" to send your first one.
             </div>
           ) : (
-            <table className="w-full text-xs">
+            <table className="w-full min-w-[860px] text-xs">
               <thead className="bg-background/30 text-muted-foreground">
                 <tr className="text-left">
                   {[
