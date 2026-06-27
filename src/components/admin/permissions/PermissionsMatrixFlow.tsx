@@ -274,7 +274,7 @@ function PagesGrid({ data }: { data: any }) {
       </div>
 
       <div className="overflow-auto rounded-2xl border border-white/10">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="sticky left-0 z-10 bg-muted/60 px-4 py-3 text-left font-medium">Page</th>
