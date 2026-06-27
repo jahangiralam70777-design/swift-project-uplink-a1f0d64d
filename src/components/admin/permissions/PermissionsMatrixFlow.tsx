@@ -352,7 +352,7 @@ function AuditLogTable() {
         </Badge>
       </div>
       <div className="overflow-auto rounded-2xl border border-white/10">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="px-3 py-2 text-left font-medium">When</th>
