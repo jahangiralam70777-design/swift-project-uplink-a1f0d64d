@@ -189,6 +189,23 @@ export function DashContent() {
     dailyTarget > 0 ? Math.min(100, Math.round((mcqsMonth / (dailyTarget * 30)) * 100)) : 0;
   const todayPct = dailyPercent;
 
+  // ── Accuracy Trend filter (real data only). ──
+  // `bars` from the server is 7 entries (oldest → today, index 6 = today),
+  // each value already computed as (correct ÷ submitted) × 100 across MCQ
+  // Practice + Quiz + Mock + Custom Exam submissions for that day.
+  const [accuracyRange, setAccuracyRange] = useState<"today" | "week">("week");
+  const accuracyBars = useMemo(
+    () => (accuracyRange === "today" ? [bars[6] ?? 0] : bars),
+    [accuracyRange, bars],
+  );
+  const accuracyLabels = useMemo(
+    () => (accuracyRange === "today" ? ["Today"] : days),
+    [accuracyRange],
+  );
+  const accuracyHasData =
+    accuracyRange === "today" ? mcqsToday > 0 : mcqsWeek > 0;
+
+
   const recommendations = data?.recommendations ?? [];
   const recentActivity = data?.recentActivity ?? [];
   const liveNotifications = data?.notifications ?? [];
@@ -329,33 +346,75 @@ export function DashContent() {
       {/* ============ ACCURACY TREND + TODAY GOAL ============ */}
       <section className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="glass shadow-card-soft rounded-3xl p-5 lg:col-span-2">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
               <h3 className="font-display text-lg font-bold">Accuracy Trend</h3>
-              <p className="text-xs text-muted-foreground">Last 7 days · live from your attempts</p>
+              <p className="text-xs text-muted-foreground">
+                {accuracyRange === "today"
+                  ? "Today · live from your submitted MCQs"
+                  : "Last 7 days · live from your submitted MCQs"}
+              </p>
             </div>
-            <div className="glass rounded-xl px-3 py-1.5 text-xs font-medium">7 Days</div>
+            <div
+              className="glass inline-flex items-center gap-1 rounded-xl p-1 text-[11px] font-semibold"
+              role="tablist"
+              aria-label="Accuracy range"
+            >
+              {(
+                [
+                  { k: "today" as const, label: "Today" },
+                  { k: "week" as const, label: "This Week" },
+                ]
+              ).map((opt) => {
+                const active = accuracyRange === opt.k;
+                return (
+                  <button
+                    key={opt.k}
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setAccuracyRange(opt.k)}
+                    className={`rounded-lg px-2.5 py-1 transition-colors ${
+                      active
+                        ? "bg-gradient-to-r from-[var(--neon-purple)] to-[var(--neon-blue)] text-white"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div className="mt-6 flex h-56 items-end gap-3">
-            {bars.map((h, i) => (
-              <div key={i} className="group/bar flex flex-1 flex-col items-center gap-2">
-                <div className="relative flex h-full w-full items-end">
-                  <span className="absolute -top-5 left-1/2 -translate-x-1/2 rounded-md bg-foreground px-1.5 py-0.5 text-[9px] font-bold text-background opacity-0 transition-opacity group-hover/bar:opacity-100">
-                    {h}%
-                  </span>
-                  <div
-                    className="w-full rounded-t-xl bg-gradient-to-t from-[var(--neon-purple)] to-[var(--neon-blue)] transition-all duration-700 group-hover/bar:opacity-90"
-                    style={{
-                      height: `${Math.max(4, h)}%`,
-                      boxShadow: "0 -8px 30px -8px var(--neon-purple)",
-                    }}
-                  />
+          {accuracyHasData ? (
+            <div className="mt-6 flex h-56 items-end gap-3">
+              {accuracyBars.map((h, i) => (
+                <div key={i} className="group/bar flex flex-1 flex-col items-center gap-2">
+                  <div className="relative flex h-full w-full items-end">
+                    <span className="absolute -top-5 left-1/2 -translate-x-1/2 rounded-md bg-foreground px-1.5 py-0.5 text-[9px] font-bold text-background opacity-0 transition-opacity group-hover/bar:opacity-100">
+                      {h}%
+                    </span>
+                    <div
+                      className="w-full rounded-t-xl bg-gradient-to-t from-[var(--neon-purple)] to-[var(--neon-blue)] transition-all duration-700 group-hover/bar:opacity-90"
+                      style={{
+                        height: `${Math.max(4, h)}%`,
+                        boxShadow: "0 -8px 30px -8px var(--neon-purple)",
+                      }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">{accuracyLabels[i]}</span>
                 </div>
-                <span className="text-[10px] text-muted-foreground">{days[i]}</span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-6 flex h-56 items-center justify-center rounded-2xl border border-dashed border-border/60 px-4 text-center text-xs text-muted-foreground">
+              {accuracyRange === "today"
+                ? "Submit some MCQs today to see your accuracy."
+                : "Submit some MCQs this week to see your accuracy trend."}
+            </div>
+          )}
         </div>
+
+
 
         {/* Today's Goal ring */}
         <div className="glass shadow-card-soft relative overflow-hidden rounded-3xl p-5">
