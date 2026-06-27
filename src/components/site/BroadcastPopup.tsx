@@ -1,69 +1,76 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { Megaphone, X, AlertTriangle, Pin } from "lucide-react";
 import { useMyBroadcasts } from "@/hooks/use-my-broadcasts";
 import type { MyBroadcast } from "@/lib/broadcasts.functions";
 
-const DISMISS_KEY = "ca-aspire:broadcast-popup-dismissed";
-
-function loadDismissed(): Set<string> {
-  if (typeof window === "undefined") return new Set();
-  try {
-    const raw = window.sessionStorage.getItem(DISMISS_KEY);
-    if (!raw) return new Set();
-    return new Set(JSON.parse(raw) as string[]);
-  } catch {
-    return new Set();
-  }
-}
-
-function saveDismissed(set: Set<string>) {
-  try {
-    window.sessionStorage.setItem(DISMISS_KEY, JSON.stringify(Array.from(set)));
-  } catch { /* noop */ }
-}
-
-const PRIORITY_STYLES: Record<MyBroadcast["priority"], { ring: string; tag: string; icon: typeof Megaphone }> = {
-  urgent: { ring: "ring-red-500/50 shadow-red-500/20", tag: "bg-red-500/15 text-red-500 border-red-500/30", icon: AlertTriangle },
-  important: { ring: "ring-amber-500/50 shadow-amber-500/20", tag: "bg-amber-500/15 text-amber-500 border-amber-500/30", icon: Pin },
-  normal: { ring: "ring-primary/40 shadow-primary/20", tag: "bg-primary/15 text-primary border-primary/30", icon: Megaphone },
+const PRIORITY_STYLES: Record<
+  MyBroadcast["priority"],
+  { ring: string; tag: string; icon: typeof Megaphone }
+> = {
+  urgent: {
+    ring: "ring-red-500/50 shadow-red-500/20",
+    tag: "bg-red-500/15 text-red-500 border-red-500/30",
+    icon: AlertTriangle,
+  },
+  important: {
+    ring: "ring-amber-500/50 shadow-amber-500/20",
+    tag: "bg-amber-500/15 text-amber-500 border-amber-500/30",
+    icon: Pin,
+  },
+  normal: {
+    ring: "ring-primary/40 shadow-primary/20",
+    tag: "bg-primary/15 text-primary border-primary/30",
+    icon: Megaphone,
+  },
 };
 
+/**
+ * Broadcast popup.
+ *
+ * A broadcast appears in `items` only while the recipient row still has
+ * `read_at = null` AND `dismissed_at = null` (server-enforced; see
+ * `listMyBroadcasts`). The popup shows the first unread broadcast whose
+ * delivery_methods includes "popup".
+ *
+ * Closing / Got it / overlay click ALL persist the dismissal on the server
+ * via `markRead` (sets `read_at`). The previous implementation only
+ * persisted dismissal in sessionStorage, which cleared on browser close /
+ * private mode / new device, so users saw every prior broadcast again on
+ * the next login. We now treat any close interaction as "acknowledged" so
+ * a broadcast appears exactly once per recipient.
+ */
 export function BroadcastPopup() {
   const { items, markRead } = useMyBroadcasts();
-  const [dismissed, setDismissed] = useState<Set<string>>(() => loadDismissed());
 
   const queue = useMemo(() => {
     return items.filter((b) => {
       if (b.read_at) return false;
-      if (dismissed.has(b.recipient_id)) return false;
       const methods = Array.isArray(b.delivery_methods) ? b.delivery_methods : [];
       return methods.includes("popup");
     });
-  }, [items, dismissed]);
+  }, [items]);
 
   const current = queue[0];
 
+  const acknowledge = () => {
+    if (!current) return;
+    // Optimistic + server persistence in one shot. Once the server row
+    // has `read_at` set, listMyBroadcasts will never return it again, so
+    // this broadcast is gone for this user across all devices and sessions.
+    markRead.mutate(current.recipient_id);
+  };
+
   useEffect(() => {
     if (!current) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") handleDismiss(); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") acknowledge();
+    };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.recipient_id]);
 
   if (!current) return null;
-
-  const handleDismiss = () => {
-    const next = new Set(dismissed);
-    next.add(current.recipient_id);
-    setDismissed(next);
-    saveDismissed(next);
-  };
-
-  const handleMarkRead = () => {
-    markRead.mutate(current.recipient_id);
-    handleDismiss();
-  };
 
   const style = PRIORITY_STYLES[current.priority] ?? PRIORITY_STYLES.normal;
   const Icon = style.icon;
@@ -74,7 +81,7 @@ export function BroadcastPopup() {
       aria-modal="true"
       aria-labelledby="broadcast-popup-title"
       className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm sm:items-center"
-      onClick={handleDismiss}
+      onClick={acknowledge}
     >
       <div
         onClick={(e) => e.stopPropagation()}
@@ -82,7 +89,7 @@ export function BroadcastPopup() {
       >
         <button
           type="button"
-          onClick={handleDismiss}
+          onClick={acknowledge}
           aria-label="Close"
           className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
         >
@@ -90,13 +97,12 @@ export function BroadcastPopup() {
         </button>
         <div className="px-6 pb-2 pt-6">
           <div className="flex items-center gap-2">
-            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${style.tag}`}>
-              <Icon className="h-3.5 w-3.5" />
-              {current.priority === "urgent" ? "Urgent" : current.priority === "important" ? "Important" : "Announcement"}
+            <span
+              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${style.tag}`}
+            >
+              <Icon className="h-3 w-3" />
+              {current.priority}
             </span>
-            {queue.length > 1 ? (
-              <span className="text-xs text-muted-foreground">+{queue.length - 1} more</span>
-            ) : null}
           </div>
           <h2 id="broadcast-popup-title" className="mt-3 text-lg font-semibold leading-tight">
             {current.subject}
@@ -113,14 +119,7 @@ export function BroadcastPopup() {
         <div className="flex items-center justify-end gap-2 border-t border-border bg-muted/30 px-4 py-3">
           <button
             type="button"
-            onClick={handleDismiss}
-            className="inline-flex h-9 items-center rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            Remind me later
-          </button>
-          <button
-            type="button"
-            onClick={handleMarkRead}
+            onClick={acknowledge}
             disabled={markRead.isPending}
             className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground shadow hover:bg-primary/90 disabled:opacity-50"
           >
