@@ -676,7 +676,9 @@ export function McqFlow() {
     // If a saved session for this exact chapter is still in progress, resume
     // it instead of resetting answers/timer/progress.
     if (
+      !opts?.force &&
       id === chapterId &&
+
       !finished &&
       allAnswers.length > 0 &&
       allAnswers.some(Boolean)
