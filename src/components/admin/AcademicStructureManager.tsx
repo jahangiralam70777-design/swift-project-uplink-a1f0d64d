@@ -699,7 +699,7 @@ export function AcademicStructureManager() {
                         className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-background"
                         style={{ background: s.color ?? "#a855f7" }}
                       />
-                      <span className="flex-1 truncate text-sm font-semibold">{s.name}</span>
+                      <span className="min-w-0 flex-1 truncate text-sm font-semibold">{s.name}</span>
                       <Badge
                         variant={s.status === "published" ? "default" : "secondary"}
                         className="text-[10px] capitalize"
