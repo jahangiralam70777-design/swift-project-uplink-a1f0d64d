@@ -189,6 +189,23 @@ export function DashContent() {
     dailyTarget > 0 ? Math.min(100, Math.round((mcqsMonth / (dailyTarget * 30)) * 100)) : 0;
   const todayPct = dailyPercent;
 
+  // ── Accuracy Trend filter (real data only). ──
+  // `bars` from the server is 7 entries (oldest → today, index 6 = today),
+  // each value already computed as (correct ÷ submitted) × 100 across MCQ
+  // Practice + Quiz + Mock + Custom Exam submissions for that day.
+  const [accuracyRange, setAccuracyRange] = useState<"today" | "week">("week");
+  const accuracyBars = useMemo(
+    () => (accuracyRange === "today" ? [bars[6] ?? 0] : bars),
+    [accuracyRange, bars],
+  );
+  const accuracyLabels = useMemo(
+    () => (accuracyRange === "today" ? ["Today"] : days),
+    [accuracyRange],
+  );
+  const accuracyHasData =
+    accuracyRange === "today" ? mcqsToday > 0 : mcqsWeek > 0;
+
+
   const recommendations = data?.recommendations ?? [];
   const recentActivity = data?.recentActivity ?? [];
   const liveNotifications = data?.notifications ?? [];
