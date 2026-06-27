@@ -1340,8 +1340,8 @@ function RecentUploadsCard({ snap }: { snap: Snap }) {
                     <meta.i className="h-4 w-4" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium">{u.title || "Untitled"}</p>
-                    <p className="truncate text-[10px] text-muted-foreground">
+                    <p className="break-words text-xs font-medium sm:truncate">{u.title || "Untitled"}</p>
+                    <p className="break-words text-[10px] text-muted-foreground sm:truncate">
                       {meta.label} · {timeAgo(u.created_at)}
                     </p>
                   </div>
