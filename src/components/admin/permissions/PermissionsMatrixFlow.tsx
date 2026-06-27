@@ -303,7 +303,7 @@ function PagesGrid({ data }: { data: any }) {
                 </tr>
                 {rows.map((page: any) => (
                   <tr key={page.key}>
-                    <td className="sticky left-0 z-10 bg-background/95 px-4 py-2.5">
+                    <td className="sticky left-0 z-10 whitespace-nowrap bg-background/95 px-4 py-2.5">
                       <div className="font-medium">{page.label}</div>
                       <div className="text-[11px] text-muted-foreground">{page.route}</div>
                     </td>
