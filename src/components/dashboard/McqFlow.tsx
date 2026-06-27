@@ -673,6 +673,21 @@ export function McqFlow() {
   }, [current, batchIndex, chapterId]);
 
   function gotoChapter(id: string, name: string) {
+    // If a saved session for this exact chapter is still in progress, resume
+    // it instead of resetting answers/timer/progress.
+    if (
+      id === chapterId &&
+      !finished &&
+      allAnswers.length > 0 &&
+      allAnswers.some(Boolean)
+    ) {
+      setStep(3);
+      debugMcq("chapter resume", { chapterId: id });
+      return;
+    }
+    // Starting a brand-new practice (different chapter or no prior state):
+    // clear any persisted snapshot from a prior chapter first.
+    clearMcqPersisted();
     setChapterId(id);
     setChapterName(name);
     setStep(3);
@@ -690,6 +705,7 @@ export function McqFlow() {
     questionStartRef.current = Date.now();
     debugMcq("chapter start", { chapterId: id, chapterName: name, level, subjectId, subjectName });
   }
+
 
   function gotoBatch(nextBatch: number) {
     const clamped = Math.max(0, Math.min(numBatches - 1, nextBatch));
