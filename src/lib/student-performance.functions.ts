@@ -479,6 +479,9 @@ export const studentPerformanceCenter = createServerFn({ method: "GET" })
         answered: totalAnswered,
         correct: totalCorrect,
         durationSeconds: totalDuration,
+        mcqSolvedThisMonth,
+        monthlyTarget,
+        monthlyProgressPct,
       },
     };
   });
