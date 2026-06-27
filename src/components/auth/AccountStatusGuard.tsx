@@ -7,29 +7,45 @@ import { useAppStore } from "@/stores/app-store";
 import { clearClientAuthStorage, signOut } from "@/lib/auth-client";
 
 /**
- * Real-time account status enforcement.
+ * Real-time account-status enforcement.
  *
- * Forces the current device (and all other open tabs) to sign out the moment:
- *  - the profile row is deleted or soft-deleted (`deleted_at` set / status=suspended)
- *  - a new active row appears in `user_bans` for the user
- *  - the underlying `auth.users` row is gone (permanent_delete)
- *  - Supabase fires `USER_DELETED` / `SIGNED_OUT` from another source
- *  - any other tab broadcasts a forced-logout event
+ * Logs the user out ONLY when the server emits an explicit, durable signal:
+ *   - profiles.deleted_at set, or profiles.status = "suspended" / "deleted"
+ *   - a new active row in user_bans, or an existing row that is still active
+ *   - account_status_events row with a KNOWN reason (deleted/banned/suspended/missing)
+ *   - user_sessions.active_session_id explicitly marked "revoked:..." by admin
+ *   - supabase.auth USER_DELETED event
+ *   - getUser() returns an explicit user_not_found / "User from sub claim" error
  *
- * Detection layers (defence in depth):
- *  1. Supabase realtime channels on `profiles` + `user_bans`
- *  2. `supabase.auth.onAuthStateChange` listener
- *  3. Periodic 2s probe → `auth.getUser()` + `is_user_banned` RPC
- *  4. Probe on tab focus / online / route change
- *  5. Cross-tab BroadcastChannel + `storage` event sync
+ * It NEVER force-logs-out on:
+ *   - session refresh, token refresh, transient network failures
+ *   - empty `.maybeSingle()` results (RLS / cold start / projection nulls)
+ *   - generic SIGNED_OUT from another tab (we simply follow that other tab to /login)
+ *   - INITIAL_SESSION / TOKEN_REFRESHED events
+ *   - account_status_events whose `reason` is not in the known set
  *
- * No page refresh is required — the user lands on /login immediately.
+ * Detection layers:
+ *   1. Supabase realtime channels on profiles / user_bans / account_status_events /
+ *      user_sessions (admin-revoked marker only)
+ *   2. supabase.auth.onAuthStateChange (USER_DELETED hard signal)
+ *   3. Conservative on-demand probe — runs on tab focus / route change /
+ *      coming online, NOT on a 2-second interval. Requires TWO consecutive
+ *      explicit-missing probes before firing logout.
+ *   4. Cross-tab BroadcastChannel + storage event sync
  */
 
 const LOGOUT_BROADCAST_KEY = "edumaster.force_logout";
 const LOGOUT_CHANNEL = "edumaster-account-status";
 
 type LogoutReason = "deleted" | "banned" | "missing";
+
+const REASON_MESSAGES: Record<LogoutReason, string> = {
+  banned: "Your account has been banned by an administrator.",
+  deleted: "Your account has been removed by an administrator.",
+  missing: "Your session is no longer valid. Please sign in again.",
+};
+
+const KNOWN_EVENT_REASONS = new Set(["deleted", "banned", "suspended", "missing"]);
 
 export function AccountStatusGuard() {
   const user = useAppStore((s) => s.user);
@@ -45,6 +61,8 @@ export function AccountStatusGuard() {
     }
     const uid = user.id;
     let stopped = false;
+
+    let bc: BroadcastChannel | null = null;
 
     const broadcast = (reason: LogoutReason) => {
       try {
@@ -87,13 +105,7 @@ export function AccountStatusGuard() {
         authVersion: Math.max(state.authVersion + 1, Date.now()),
         quizRuntime: { active: false, score: 0, answered: 0 },
       }));
-      const message =
-        reason === "banned"
-          ? "Your account has been banned by an administrator."
-          : reason === "deleted"
-            ? "Your account has been removed by an administrator."
-            : "Your session is no longer valid. Please sign in again.";
-      toast.error(message, { duration: 8000 });
+      toast.error(REASON_MESSAGES[reason], { duration: 8000 });
       try {
         navigate({ to: "/login", replace: true });
       } catch {
@@ -102,7 +114,6 @@ export function AccountStatusGuard() {
     };
 
     // --- Cross-tab sync ---
-    let bc: BroadcastChannel | null = null;
     try {
       bc = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(LOGOUT_CHANNEL) : null;
     } catch {
@@ -125,13 +136,13 @@ export function AccountStatusGuard() {
     };
     if (typeof window !== "undefined") window.addEventListener("storage", onStorage);
 
-    // --- Supabase auth state listener (catches USER_DELETED / SIGNED_OUT
-    // originating outside this guard). Fire-and-forget per Supabase guidance
-    // to avoid deadlocking the auth state machine.
+    // --- Supabase auth state listener ---
+    // Only USER_DELETED is a hard "the auth row is gone" signal. SIGNED_OUT
+    // can fire on legitimate token-clear paths (manual logout from another
+    // tab, idle logout) and must NOT produce the "removed by administrator"
+    // toast or force a duplicate sign-out. We just navigate quietly.
     const { data: authSub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
-        // Another tab signed out, or the session was revoked. Don't double
-        // toast — just navigate.
         if (kickedRef.current) return;
         kickedRef.current = true;
         try {
@@ -154,9 +165,8 @@ export function AccountStatusGuard() {
           const next = payload.new as { deleted_at?: string | null; status?: string | null } | null;
           if (!next) return;
           if (next.deleted_at) void forceLogout("deleted");
-          else if (next.status === "suspended" || next.status === "deleted") {
-            void forceLogout("banned");
-          }
+          else if (next.status === "suspended") void forceLogout("banned");
+          else if (next.status === "deleted") void forceLogout("deleted");
         },
       )
       .on(
@@ -191,10 +201,14 @@ export function AccountStatusGuard() {
           filter: `user_id=eq.${uid}`,
         },
         (payload) => {
-          const next = payload.new as { reason?: LogoutReason | "suspended" | null } | null;
-          void forceLogout(
-            next?.reason === "banned" || next?.reason === "suspended" ? "banned" : "deleted",
-          );
+          const reason = (payload.new as { reason?: string | null } | null)?.reason ?? "";
+          // Only fire on KNOWN reasons. Unknown reasons MUST NOT default to
+          // "deleted" — that was the source of the bogus
+          // "removed by administrator" message on benign events.
+          if (!KNOWN_EVENT_REASONS.has(reason)) return;
+          if (reason === "banned" || reason === "suspended") void forceLogout("banned");
+          else if (reason === "deleted") void forceLogout("deleted");
+          else if (reason === "missing") void forceLogout("missing");
         },
       )
       .on(
@@ -203,15 +217,29 @@ export function AccountStatusGuard() {
         (payload) => {
           const sid =
             (payload.new as { active_session_id?: string | null } | null)?.active_session_id ?? "";
+          // Single-session replacement (a new login on another device writes
+          // a plain session ID, NOT a "revoked:" marker) is handled by
+          // SingleSessionGuard with its own messaging. Only react here to
+          // the explicit admin-set "revoked:" marker, so we never mislabel
+          // a normal device switch as "account removed".
           if (sid.startsWith("revoked:banned") || sid.startsWith("revoked:suspended")) {
             void forceLogout("banned");
-          } else if (sid.startsWith("revoked:")) void forceLogout("deleted");
+          } else if (
+            sid.startsWith("revoked:deleted") ||
+            sid.startsWith("revoked:missing") ||
+            sid === "revoked"
+          ) {
+            void forceLogout("deleted");
+          }
         },
       )
       .on(
         "postgres_changes",
         { event: "DELETE", schema: "public", table: "user_sessions", filter: `user_id=eq.${uid}` },
-        () => void forceLogout("deleted"),
+        () => {
+          // Deleting the row is NOT a deletion signal on its own — admins
+          // sometimes clear session bookkeeping. Skip.
+        },
       )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
@@ -219,42 +247,37 @@ export function AccountStatusGuard() {
         }
       });
 
-    // --- Periodic probe (covers missed realtime events + permanent_delete
-    // where the local JWT is still technically valid) ---
+    // --- Conservative on-demand probe ---
+    // Runs only on focus / online / visibilitychange / route change /
+    // a single initial check. NO periodic interval. Requires two
+    // consecutive explicit-missing observations before firing logout.
     let probeInFlight = false;
-    // Track consecutive "profile missing" results so we only log out after
-    // the row has stayed missing across multiple probes (not a single
-    // transient null).
     let missingProfileStreak = 0;
+    let missingUserStreak = 0;
     const probe = async () => {
       if (stopped || kickedRef.current || probeInFlight) return;
       probeInFlight = true;
       try {
-        // getUser() revalidates with the Auth server (vs getSession()).
         const { data, error } = await supabase.auth.getUser();
         if (error || !data?.user) {
+          const code = (error as { code?: string } | null)?.code ?? "";
           const msg = (error?.message ?? "").toLowerCase();
-          if (
-            !data?.user ||
+          const explicitMissing =
+            code === "user_not_found" ||
             msg.includes("user_not_found") ||
-            msg.includes("not found") ||
-            msg.includes("user from sub claim")
-          ) {
-            void forceLogout("deleted");
+            msg.includes("user from sub claim");
+          if (!explicitMissing) {
+            // Transient (network blip, 5xx, refresh-token race). DO NOT log out.
             return;
           }
-          return; // transient — try again next tick
+          missingUserStreak += 1;
+          if (missingUserStreak >= 2) {
+            void forceLogout("deleted");
+          }
+          return;
         }
-        // Profile presence check — covers soft delete edge cases that the
-        // realtime channel missed (e.g. session was offline).
-        //
-        // CRITICAL: `.maybeSingle()` returns `null` for BOTH "row truly
-        // absent" AND "query failed silently / RLS edge case / cold start".
-        // Treating every null as "account deleted" caused valid students to
-        // be logged out on a single transient hiccup. We now only force
-        // logout when (a) there's an explicit error whose code/message
-        // matches a true not-found, or (b) the row is missing on TWO
-        // consecutive probes (i.e. it stays missing across ~PROBE_MS).
+        missingUserStreak = 0;
+
         const profileResp = await supabase
           .from("profiles")
           .select("id,deleted_at,status")
@@ -265,31 +288,34 @@ export function AccountStatusGuard() {
           | null;
         const profErr = profileResp.error as { code?: string; message?: string } | null;
         if (!prof) {
-          // Network / RLS hiccup: do not log the user out. Try again next tick.
           const profErrCode = profErr?.code ?? "";
           const profErrMsg = (profErr?.message ?? "").toLowerCase();
           const explicitMissing = profErrCode === "PGRST116" || profErrMsg.includes("not found");
           if (explicitMissing) {
             missingProfileStreak += 1;
           } else {
+            // Could be RLS denial mid-recovery, transient network, etc.
+            // Reset, do not log out.
             missingProfileStreak = 0;
           }
-          if (missingProfileStreak >= 2) {
+          if (missingProfileStreak >= 3) {
             void forceLogout("deleted");
           }
           return;
         }
         missingProfileStreak = 0;
-        const p = prof;
-        if (p.deleted_at) {
+        if (prof.deleted_at) {
           void forceLogout("deleted");
           return;
         }
-        if (p.status === "suspended" || p.status === "deleted") {
+        if (prof.status === "suspended") {
           void forceLogout("banned");
           return;
         }
-        // Ban probe via SECURITY DEFINER RPC.
+        if (prof.status === "deleted") {
+          void forceLogout("deleted");
+          return;
+        }
         const { data: banned } = await (
           supabase as unknown as {
             rpc: (
@@ -298,31 +324,14 @@ export function AccountStatusGuard() {
             ) => Promise<{ data: boolean | null; error: unknown }>;
           }
         ).rpc("is_user_banned", { _user_id: uid });
-        if (banned === true) {
-          void forceLogout("banned");
-          return;
-        }
-        const { data: event } = await supabase
-          .from("account_status_events")
-          .select("reason")
-          .eq("user_id", uid)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (event?.reason === "banned" || event?.reason === "suspended") {
-          void forceLogout("banned");
-        } else if (event?.reason === "deleted" || event?.reason === "missing") {
-          void forceLogout("deleted");
-        }
+        if (banned === true) void forceLogout("banned");
       } catch {
-        /* network blip — try again next tick */
+        /* transient — do not log out */
       } finally {
         probeInFlight = false;
       }
     };
 
-    const PROBE_MS = 2_000;
-    const interval = window.setInterval(probe, PROBE_MS);
     const onFocus = () => void probe();
     const onOnline = () => void probe();
     const onVisible = () => {
@@ -331,12 +340,11 @@ export function AccountStatusGuard() {
     window.addEventListener("focus", onFocus);
     window.addEventListener("online", onOnline);
     document.addEventListener("visibilitychange", onVisible);
-    const initial = window.setTimeout(() => void probe(), 250);
+    const initial = window.setTimeout(() => void probe(), 1500);
 
     return () => {
       stopped = true;
       window.clearTimeout(initial);
-      window.clearInterval(interval);
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("online", onOnline);
       window.removeEventListener("storage", onStorage);
@@ -355,8 +363,8 @@ export function AccountStatusGuard() {
     };
   }, [user?.id, navigate, queryClient]);
 
-  // Probe on route change — guarantees the very next protected page nav
-  // re-validates without waiting for the 10s interval.
+  // Probe on route change — but ONLY warn the user when getUser() returns an
+  // explicit "user gone" error. Network failures, 5xx, refresh races stay silent.
   useEffect(() => {
     if (!user?.id) return;
     let cancelled = false;
@@ -370,11 +378,7 @@ export function AccountStatusGuard() {
           const explicitMissing =
             code === "user_not_found" ||
             msg.includes("user_not_found") ||
-            msg.includes("user from sub claim") ||
-            (error === null && !data?.user); // explicit empty user object
-          // Plain network failures (no body, fetch rejection) MUST NOT
-          // sign the user out — that produced the "logged out for no
-          // reason" complaints on flaky connections.
+            msg.includes("user from sub claim");
           if (!explicitMissing) return;
           try {
             await signOut();
