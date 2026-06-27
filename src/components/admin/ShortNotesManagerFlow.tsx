@@ -405,7 +405,7 @@ export function ShortNotesManagerFlow() {
           </Badge>
         </div>
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="min-w-[860px]">
             <TableHeader>
               <TableRow className="border-white/10 hover:bg-transparent">
                 <TableHead className="pl-4">Title</TableHead>
