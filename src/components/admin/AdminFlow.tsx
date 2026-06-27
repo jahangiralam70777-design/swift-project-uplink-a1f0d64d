@@ -213,11 +213,11 @@ function AdminTopbar({ badge }: { badge?: AdminNotificationsBadge }) {
       .toUpperCase() || "AD";
 
   return (
-    <div className="glass shadow-card-soft flex items-center gap-3 rounded-2xl p-2.5">
+    <div className="glass shadow-card-soft flex flex-wrap items-center gap-2 rounded-2xl p-2.5 pl-14 sm:gap-3 lg:flex-nowrap lg:pl-2.5">
       <button
         type="button"
         onClick={() => setSearchOpen(true)}
-        className="relative flex-1 max-w-2xl text-left"
+        className="relative order-1 w-full min-w-0 basis-full text-left lg:order-none lg:w-auto lg:flex-1 lg:basis-auto lg:max-w-2xl"
         aria-label="Open global search"
       >
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -228,7 +228,7 @@ function AdminTopbar({ badge }: { badge?: AdminNotificationsBadge }) {
           Ctrl + K
         </kbd>
       </button>
-      <div className="ml-auto flex items-center gap-2">
+      <div className="order-2 ml-auto flex flex-wrap items-center justify-end gap-2 lg:order-none">
         <span className="hidden items-center gap-1.5 text-[10px] text-muted-foreground md:flex">
           <CircleDot className="h-2.5 w-2.5 animate-pulse text-emerald-400" />
           {fmtTime(now)}
