@@ -45,6 +45,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/stores/app-store";
 import { getMyProfile, updateMyProfile } from "@/lib/profile.functions";
+import { studentPerformanceCenter } from "@/lib/student-performance.functions";
 import { updatePassword } from "@/lib/auth-client";
 import { DEFAULT_PREFS, setPrefs, usePrefs, type NotifPrefs } from "@/lib/profile-prefs";
 import { confirmDialog } from "@/components/ui/confirm-imperative";
