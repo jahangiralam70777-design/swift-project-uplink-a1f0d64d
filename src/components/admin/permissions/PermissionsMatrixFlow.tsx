@@ -181,7 +181,7 @@ function PermissionsGrid({ data }: { data: any }) {
           <tbody>
             {visible.map((perm: any, idx: number) => (
               <tr key={perm.key} className={idx % 2 === 0 ? "bg-background/0" : "bg-muted/10"}>
-                <td className="sticky left-0 z-10 bg-background/95 px-4 py-2.5">
+                <td className="sticky left-0 z-10 whitespace-nowrap bg-background/95 px-4 py-2.5">
                   <div className="font-medium">{perm.label}</div>
                   <div className="text-[11px] text-muted-foreground">{perm.key}</div>
                 </td>
