@@ -420,6 +420,25 @@ export const studentPerformanceCenter = createServerFn({ method: "GET" })
       : 0;
     const avgCompletionSec = completed.length ? Math.round(totalDuration / completed.length) : 0;
 
+    // Current calendar month MCQ solved progress (used by Settings → Monthly Progress)
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const daysInMonth = new Date(
+      monthStart.getFullYear(),
+      monthStart.getMonth() + 1,
+      0,
+    ).getDate();
+    const mcqSolvedThisMonth = submittedAnswers.filter(
+      (a) => new Date(a.at).getTime() >= monthStart.getTime(),
+    ).length;
+    const dayElapsed = Math.min(daysInMonth, new Date().getDate());
+    const monthlyTarget = Math.max(30, dayElapsed * 10); // soft target: 10 MCQs/day
+    const monthlyProgressPct = Math.min(
+      100,
+      monthlyTarget ? Math.round((mcqSolvedThisMonth / monthlyTarget) * 100) : 0,
+    );
+
     // Improvement % = (last7 accuracy − previous7 accuracy)
     const last7 = trend.slice(-7);
     const prev7 = trend.slice(0, 7);
