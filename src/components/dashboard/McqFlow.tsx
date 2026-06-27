@@ -1034,15 +1034,11 @@ export function McqFlow() {
 
   function restartSame() {
     if (!chapterId || !chapterName) return;
-    // Force a fresh start: clear persisted snapshot and answers so gotoChapter
-    // doesn't take the resume branch.
     clearMcqPersisted();
-    setAllAnswers([]);
-    initializedChapterRef.current = null;
-    setFinished(false);
-    gotoChapter(chapterId, chapterName);
+    gotoChapter(chapterId, chapterName, { force: true });
     mcqsQ.refetch();
   }
+
 
 
   const inPractice = step === 3;
