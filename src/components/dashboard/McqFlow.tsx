@@ -532,6 +532,67 @@ export function McqFlow() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterId, mcqsQ.isSuccess, totalAll]);
 
+  // ── Persist MCQ Practice session to sessionStorage on relevant changes. ──
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (finished) return; // cleared by the finish effect below
+    try {
+      const snapshot: PersistedMcq = {
+        step,
+        level,
+        subjectId,
+        subjectName,
+        chapterId,
+        chapterName,
+        current,
+        batchIndex,
+        allAnswers,
+        sessionStart,
+        sessionCount,
+        sessionTimerMin,
+        customTimerOn,
+        customTimerInput,
+        sessionMode,
+        timeLeft,
+        timeLeftSavedAt: Date.now(),
+        finished,
+        reviewMode,
+        selectedOption,
+        savedAttemptId,
+      };
+      window.sessionStorage.setItem(MCQ_SESSION_KEY, JSON.stringify(snapshot));
+    } catch {
+      /* quota or serialization issues — ignore */
+    }
+  }, [
+    step,
+    level,
+    subjectId,
+    subjectName,
+    chapterId,
+    chapterName,
+    current,
+    batchIndex,
+    allAnswers,
+    sessionStart,
+    sessionCount,
+    sessionTimerMin,
+    customTimerOn,
+    customTimerInput,
+    sessionMode,
+    timeLeft,
+    finished,
+    reviewMode,
+    selectedOption,
+    savedAttemptId,
+  ]);
+
+  // Clear the persisted session as soon as practice is completed.
+  useEffect(() => {
+    if (finished) clearMcqPersisted();
+  }, [finished]);
+
+
   const options = useMemo(
     () =>
       q
