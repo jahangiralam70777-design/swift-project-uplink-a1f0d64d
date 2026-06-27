@@ -351,12 +351,61 @@ function InfoRow({ i: Icon, v }: { i: typeof Mail; v: string }) {
 }
 
 function StatsRow() {
+  const fetchPerf = useServerFn(studentPerformanceCenter);
+  const { data, isLoading } = useQuery({
+    queryKey: ["student-performance-center"],
+    queryFn: () => fetchPerf(),
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
+
+  const summary = data?.summary ?? [];
+  const totals = data?.totals;
+  const mockTotal = summary.find((s) => s.kind === "mock")?.total ?? 0;
+  const quizTotal = summary.find((s) => s.kind === "quiz")?.total ?? 0;
+  const mcqsSolved = totals?.answered ?? 0;
+  const accuracy = totals?.accuracy ?? 0;
+  const monthlyPct = totals?.monthlyProgressPct ?? 0;
+  const monthlySolved = totals?.mcqSolvedThisMonth ?? 0;
+
+  const fmt = (n: number) => (isLoading ? "—" : n.toLocaleString());
+
   const stats = [
-    { l: "MCQ Practiced", v: "—", s: "Live stat", i: GraduationCap, tint: "text-sky-300" },
-    { l: "Mock Tests", v: "—", s: "Live stat", i: Trophy, tint: "text-amber-300" },
-    { l: "Study Hours", v: "—", s: "Live stat", i: Activity, tint: "text-fuchsia-300" },
-    { l: "Accuracy", v: "—", s: "Live stat", i: Target, tint: "text-emerald-300" },
-    { l: "Streak", v: "—", s: "Live stat", i: Flame, tint: "text-orange-300" },
+    {
+      l: "MCQs Solved",
+      v: fmt(mcqsSolved),
+      s: "All submitted answers",
+      i: GraduationCap,
+      tint: "text-sky-300",
+    },
+    {
+      l: "Mock Tests",
+      v: fmt(mockTotal),
+      s: "Total attempts",
+      i: Trophy,
+      tint: "text-amber-300",
+    },
+    {
+      l: "Quiz Attempts",
+      v: fmt(quizTotal),
+      s: "Total attempts",
+      i: Activity,
+      tint: "text-fuchsia-300",
+    },
+    {
+      l: "Accuracy",
+      v: isLoading ? "—" : `${accuracy}%`,
+      s: "Overall submitted",
+      i: Target,
+      tint: "text-emerald-300",
+    },
+    {
+      l: "Monthly Progress",
+      v: isLoading ? "—" : `${monthlyPct}%`,
+      s: `${monthlySolved} MCQs this month`,
+      i: Flame,
+      tint: "text-orange-300",
+    },
   ];
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
