@@ -229,12 +229,20 @@ const OptionButton = memo(function OptionButton({
 const BATCH_SIZE = 25;
 
 export function McqFlow() {
-  const [step, _setStep] = useState<Step>(0);
+  // ── Hydration: read persisted MCQ session once on mount. ──
+  const persistedRef = useRef<PersistedMcq | null | undefined>(undefined);
+  if (persistedRef.current === undefined) {
+    persistedRef.current = readMcqPersisted();
+  }
+  const persisted = persistedRef.current;
+  const hydrated = !!persisted && !persisted.finished;
+
+  const [step, _setStep] = useState<Step>(hydrated ? persisted!.step : 0);
   // Browser-history-aware step setter: pushes a history entry when moving
   // deeper into the flow so the phone/browser Back button walks back through
   // Level → Subject → Chapter → Practice instead of leaving the page (e.g.
   // jumping to Daily Progress where the user came from).
-  const stepRef = useRef<Step>(0);
+  const stepRef = useRef<Step>(hydrated ? persisted!.step : 0);
   const skipPushRef = useRef<boolean>(false);
   const setStep = useCallback((next: Step) => {
     _setStep((prev) => {
@@ -272,32 +280,40 @@ export function McqFlow() {
     };
     // Seed an initial entry so the very first Back press is captured.
     try {
-      window.history.replaceState({ __mcqStep: 0 }, "");
+      window.history.replaceState({ __mcqStep: stepRef.current }, "");
     } catch {
       /* ignore */
     }
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
-  const [level, setLevel] = useState<string | null>(null);
-  const [subjectId, setSubjectId] = useState<string | null>(null);
-  const [subjectName, setSubjectName] = useState<string | null>(null);
-  const [chapterId, setChapterId] = useState<string | null>(null);
-  const [chapterName, setChapterName] = useState<string | null>(null);
+  const [level, setLevel] = useState<string | null>(hydrated ? persisted!.level : null);
+  const [subjectId, setSubjectId] = useState<string | null>(hydrated ? persisted!.subjectId : null);
+  const [subjectName, setSubjectName] = useState<string | null>(hydrated ? persisted!.subjectName : null);
+  const [chapterId, setChapterId] = useState<string | null>(hydrated ? persisted!.chapterId : null);
+  const [chapterName, setChapterName] = useState<string | null>(hydrated ? persisted!.chapterName : null);
   const [openChapter, setOpenChapter] = useState<string | null>(null);
 
-  const [current, setCurrent] = useState(0); // index within the current batch
-  const [batchIndex, setBatchIndex] = useState(0);
+  const [current, setCurrent] = useState(hydrated ? persisted!.current : 0); // index within the current batch
+  const [batchIndex, setBatchIndex] = useState(hydrated ? persisted!.batchIndex : 0);
   const [showExp, setShowExp] = useState(false);
   // Chapter-wide answer array. Index = global MCQ index across the whole chapter.
-  const [allAnswers, setAllAnswers] = useState<AnswerRec[]>([]);
-  const [selectedOption, setSelectedOption] = useState<Choice | null>(null);
-  const [sessionStart, setSessionStart] = useState<number>(0);
+  const [allAnswers, setAllAnswers] = useState<AnswerRec[]>(
+    hydrated ? (persisted!.allAnswers ?? []) : [],
+  );
+  const [selectedOption, setSelectedOption] = useState<Choice | null>(
+    hydrated ? persisted!.selectedOption : null,
+  );
+  const [sessionStart, setSessionStart] = useState<number>(
+    hydrated ? persisted!.sessionStart : 0,
+  );
   const questionStartRef = useRef<number>(Date.now());
   const [finished, setFinished] = useState(false);
-  const [reviewMode, setReviewMode] = useState(false);
+  const [reviewMode, setReviewMode] = useState(hydrated ? persisted!.reviewMode : false);
   const [saving, setSaving] = useState(false);
-  const [savedAttemptId, setSavedAttemptId] = useState<string | null>(null);
+  const [savedAttemptId, setSavedAttemptId] = useState<string | null>(
+    hydrated ? persisted!.savedAttemptId : null,
+  );
 
   const [levelQuery, setLevelQuery] = useState("");
   const [subjectQuery, setSubjectQuery] = useState("");
@@ -309,14 +325,39 @@ export function McqFlow() {
   } | null>(null);
 
   // Session config (chosen on the pre-session card)
-  const [sessionCount, setSessionCount] = useState<"10" | "25" | "50" | "all">("all");
-  const [sessionTimerMin, setSessionTimerMin] = useState<number>(0); // 0 = off
-  const [customTimerOn, setCustomTimerOn] = useState<boolean>(false);
-  const [customTimerInput, setCustomTimerInput] = useState<string>("15");
-  const [sessionMode, setSessionMode] = useState<"instant" | "submit-end">("instant");
-  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [sessionCount, setSessionCount] = useState<"10" | "25" | "50" | "all">(
+    hydrated ? persisted!.sessionCount : "all",
+  );
+  const [sessionTimerMin, setSessionTimerMin] = useState<number>(
+    hydrated ? persisted!.sessionTimerMin : 0,
+  ); // 0 = off
+  const [customTimerOn, setCustomTimerOn] = useState<boolean>(
+    hydrated ? persisted!.customTimerOn : false,
+  );
+  const [customTimerInput, setCustomTimerInput] = useState<string>(
+    hydrated ? persisted!.customTimerInput : "15",
+  );
+  const [sessionMode, setSessionMode] = useState<"instant" | "submit-end">(
+    hydrated ? persisted!.sessionMode : "instant",
+  );
+  const [timeLeft, setTimeLeft] = useState<number>(() => {
+    if (!hydrated) return 0;
+    const elapsedSec = Math.max(
+      0,
+      Math.floor((Date.now() - (persisted!.timeLeftSavedAt || Date.now())) / 1000),
+    );
+    return Math.max(0, (persisted!.timeLeft || 0) - elapsedSec);
+  });
   const autoFinishKeyRef = useRef<string | null>(null);
-  const initializedChapterRef = useRef<string | null>(null);
+  // Mark the chapter buffer as already-initialized when hydrating so the
+  // auto-init effect doesn't wipe restored answers.
+  const initializedChapterRef = useRef<string | null>(
+    hydrated && persisted!.chapterId && (persisted!.allAnswers?.length ?? 0) > 0
+      ? persisted!.chapterId
+      : null,
+  );
+
+
 
   const listSubjectsFn = useServerFn(listSubjects);
   const listChaptersFn = useServerFn(listChapters);
