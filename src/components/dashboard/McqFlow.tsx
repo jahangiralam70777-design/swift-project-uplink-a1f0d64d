@@ -103,6 +103,52 @@ type Mcq = {
 type Choice = "A" | "B" | "C" | "D";
 type AnswerRec = { chosen: Choice | null; timeMs: number } | undefined;
 
+// ─── Lightweight sessionStorage hydration for MCQ Practice only ──────────────
+const MCQ_SESSION_KEY = "mcq-practice-session-v1";
+type PersistedMcq = {
+  step: 0 | 1 | 2 | 3;
+  level: string | null;
+  subjectId: string | null;
+  subjectName: string | null;
+  chapterId: string | null;
+  chapterName: string | null;
+  current: number;
+  batchIndex: number;
+  allAnswers: AnswerRec[];
+  sessionStart: number;
+  sessionCount: "10" | "25" | "50" | "all";
+  sessionTimerMin: number;
+  customTimerOn: boolean;
+  customTimerInput: string;
+  sessionMode: "instant" | "submit-end";
+  timeLeft: number;
+  timeLeftSavedAt: number;
+  finished: boolean;
+  reviewMode: boolean;
+  selectedOption: Choice | null;
+  savedAttemptId: string | null;
+};
+function readMcqPersisted(): PersistedMcq | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(MCQ_SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedMcq;
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+function clearMcqPersisted() {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(MCQ_SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 import { sanitizeOptionText } from "@/lib/sanitize-option";
 
 function normalizeChoice(value: string | null | undefined): Choice | null {
