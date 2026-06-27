@@ -806,7 +806,7 @@ export function AcademicStructureManager() {
                   <button
                     type="button"
                     onClick={() => setMcqChapter(c)}
-                    className="flex-1 truncate text-left hover:text-primary"
+                    className="min-w-0 flex-1 truncate text-left hover:text-primary"
                     title="View & manage MCQs"
                   >
                     <p className="truncate font-medium">{c.name}</p>
