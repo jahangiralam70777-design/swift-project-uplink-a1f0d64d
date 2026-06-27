@@ -1401,7 +1401,7 @@ function PopularSubjectsCard({
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/15 font-mono text-[10px] font-bold text-primary">
                 {i + 1}
               </span>
-              <span className="flex-1 truncate font-medium">{s.name}</span>
+              <span className="min-w-0 flex-1 truncate font-medium">{s.name}</span>
               <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                 {s.pct.toFixed(1)}%
               </span>
