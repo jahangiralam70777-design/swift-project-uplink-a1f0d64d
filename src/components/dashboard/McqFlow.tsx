@@ -672,7 +672,7 @@ export function McqFlow() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current, batchIndex, chapterId]);
 
-  function gotoChapter(id: string, name: string) {
+  function gotoChapter(id: string, name: string, opts?: { force?: boolean }) {
     // If a saved session for this exact chapter is still in progress, resume
     // it instead of resetting answers/timer/progress.
     if (
