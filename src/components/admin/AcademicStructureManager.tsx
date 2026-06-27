@@ -691,7 +691,7 @@ export function AcademicStructureManager() {
                         style={{ background: s.color ?? "var(--primary)" }}
                       />
                     )}
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
                       <ChevronRight
                         className={`h-3.5 w-3.5 shrink-0 transition-transform duration-300 ${isActive ? "rotate-90 text-primary" : "text-muted-foreground"}`}
                       />
