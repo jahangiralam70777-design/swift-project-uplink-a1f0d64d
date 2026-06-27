@@ -786,7 +786,7 @@ export function AcademicStructureManager() {
               {subjectChapters.map((c) => (
                 <li
                   key={c.id}
-                  className="group flex items-center gap-2 rounded-xl border border-transparent px-3 py-2 text-sm transition-all duration-200 hover:-translate-y-px hover:border-border/60 hover:bg-muted/40 hover:shadow-card-soft"
+                  className="group flex flex-wrap items-center gap-2 rounded-xl border border-transparent px-3 py-2 text-sm transition-all duration-200 hover:-translate-y-px hover:border-border/60 hover:bg-muted/40 hover:shadow-card-soft sm:flex-nowrap"
                 >
                   <span
                     className="h-2 w-2 shrink-0 rounded-full"
